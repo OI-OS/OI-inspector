@@ -28,9 +28,9 @@ import { randomUUID, randomBytes, timingSafeEqual } from "node:crypto";
 import { spawn } from "node:child_process";
 import { PassThrough } from "node:stream";
 import { resolve, dirname } from "node:path";
-import { fileURLToPath } from 'url';
-import sqlite3 from 'sqlite3';
-import { existsSync, statSync } from 'fs';
+import { fileURLToPath } from "url";
+import sqlite3 from "sqlite3";
+import { existsSync, statSync } from "fs";
 
 const DEFAULT_MCP_PROXY_LISTEN_PORT = "6277";
 
@@ -153,7 +153,7 @@ const updateHeadersInPlace = (
 const app = express();
 app.use(cors());
 // Only parse JSON for our custom API endpoints, not for MCP SDK endpoints
-app.use('/api/bt4', express.json());
+app.use("/api/bt4", express.json());
 app.use((req, res, next) => {
   res.header("Access-Control-Expose-Headers", "mcp-session-id");
   next();
@@ -333,15 +333,21 @@ const createCustomFetch = (headerHolder: { headers: HeadersInit }) => {
 const createFilteredStdioTransport = async (
   command: string,
   args: string[],
-  env: Record<string, string>
+  env: Record<string, string>,
 ): Promise<StdioClientTransport> => {
-  console.log(`🔍 DEBUG createFilteredStdioTransport: command=${command}, args=${JSON.stringify(args)}`);
-  console.log(`🔍 DEBUG createFilteredStdioTransport: command type=${typeof command}, command value="${command}"`);
-  
+  console.log(
+    `🔍 DEBUG createFilteredStdioTransport: command=${command}, args=${JSON.stringify(args)}`,
+  );
+  console.log(
+    `🔍 DEBUG createFilteredStdioTransport: command type=${typeof command}, command value="${command}"`,
+  );
+
   if (!command) {
-    throw new Error(`Command is undefined or empty in createFilteredStdioTransport: ${command}`);
+    throw new Error(
+      `Command is undefined or empty in createFilteredStdioTransport: ${command}`,
+    );
   }
-  
+
   // Use the standard StdioClientTransport constructor with command, args, and env
   const transport = new StdioClientTransport({
     command: command,
@@ -367,22 +373,24 @@ const createTransport = async (
   if (transportType === "stdio") {
     const rawCommand = (query.command as string).trim();
     // Resolve relative paths from OI_PROJECT_PATH or fallback to relative resolution
-    const bt4Root = process.env.OI_PROJECT_PATH || 
+    const bt4Root =
+      process.env.OI_PROJECT_PATH ||
       (() => {
         // Fallback: try to find project root by going up from inspector/server/build/
         const __filename = fileURLToPath(import.meta.url);
         const __dirname = dirname(__filename);
-        return resolve(__dirname, '../../../');
+        return resolve(__dirname, "../../../");
       })();
-    const command = rawCommand.startsWith('./') ? 
-      resolve(bt4Root, rawCommand) : rawCommand;
-    
+    const command = rawCommand.startsWith("./")
+      ? resolve(bt4Root, rawCommand)
+      : rawCommand;
+
     console.log(`Raw command: ${rawCommand}, Resolved command: ${command}`);
     console.log(`📁 Using project root: ${bt4Root}`);
-    
+
     // Handle args as either JSON string, regular string, or pre-parsed array
     let origArgs: string[];
-    if (typeof query.args === 'string') {
+    if (typeof query.args === "string") {
       // Try to parse as JSON first (from frontend)
       try {
         const parsed = JSON.parse(query.args);
@@ -392,44 +400,58 @@ const createTransport = async (
         origArgs = shellParseArgs(query.args) as string[];
       }
     } else if (Array.isArray(query.args)) {
-      origArgs = query.args.map(arg => String(arg));
+      origArgs = query.args.map((arg) => String(arg));
     } else {
       origArgs = [];
     }
-    
+
     // Resolve relative paths in args as well
-    origArgs = origArgs.map(arg => {
+    origArgs = origArgs.map((arg) => {
       // Resolve paths that start with ./ or MCP-servers/
-      if (arg.startsWith('./') || arg.startsWith('MCP-servers/')) {
+      if (arg.startsWith("./") || arg.startsWith("MCP-servers/")) {
         return resolve(bt4Root, arg);
       }
       return arg;
     });
-    
+
     const queryEnv = query.env ? JSON.parse(query.env as string) : {};
     const env = { ...defaultEnvironment, ...process.env, ...queryEnv };
 
     // Use findActualExecutable to resolve the command properly
     // Handle both array and JSON string formats
     let args;
-    console.log(`🔍 DEBUG: origArgs type: ${typeof origArgs}, value: ${origArgs}`);
-    console.log(`🔍 DEBUG: Array.isArray(origArgs): ${Array.isArray(origArgs)}`);
-    console.log(`🔍 DEBUG: origArgs constructor: ${origArgs?.constructor?.name}`);
-    
+    console.log(
+      `🔍 DEBUG: origArgs type: ${typeof origArgs}, value: ${origArgs}`,
+    );
+    console.log(
+      `🔍 DEBUG: Array.isArray(origArgs): ${Array.isArray(origArgs)}`,
+    );
+    console.log(
+      `🔍 DEBUG: origArgs constructor: ${origArgs?.constructor?.name}`,
+    );
+
     if (Array.isArray(origArgs)) {
       // Check if it's a single-element array with a comma-separated string
-      if (origArgs.length === 1 && typeof origArgs[0] === 'string' && origArgs[0].includes(',')) {
-        args = origArgs[0].split(',');
-        console.log(`🔍 DEBUG: Single-element array with comma-separated string, split: ${args}`);
+      if (
+        origArgs.length === 1 &&
+        typeof origArgs[0] === "string" &&
+        origArgs[0].includes(",")
+      ) {
+        args = origArgs[0].split(",");
+        console.log(
+          `🔍 DEBUG: Single-element array with comma-separated string, split: ${args}`,
+        );
       } else {
         args = origArgs;
         console.log(`🔍 DEBUG: Using array directly: ${args}`);
       }
-    } else if (typeof origArgs === 'string') {
+    } else if (typeof origArgs === "string") {
       // Try to parse as JSON first
       try {
         const parsed = JSON.parse(origArgs);
-        console.log(`🔍 DEBUG: JSON parsed successfully: ${JSON.stringify(parsed)}`);
+        console.log(
+          `🔍 DEBUG: JSON parsed successfully: ${JSON.stringify(parsed)}`,
+        );
         if (Array.isArray(parsed)) {
           args = parsed;
           console.log(`🔍 DEBUG: Using parsed JSON array: ${args}`);
@@ -440,15 +462,17 @@ const createTransport = async (
         }
       } catch (e) {
         // Not JSON, treat as comma-separated string
-        args = String(origArgs).split(',');
+        args = String(origArgs).split(",");
         console.log(`🔍 DEBUG: Not JSON, split by comma: ${args}`);
       }
-    } else if (typeof origArgs === 'object' && origArgs !== null) {
+    } else if (typeof origArgs === "object" && origArgs !== null) {
       // Handle object case - check if it's a comma-separated string
       const stringValue = String(origArgs);
-      if (stringValue.includes(',')) {
-        args = stringValue.split(',');
-        console.log(`🔍 DEBUG: Object with comma-separated string, split: ${args}`);
+      if (stringValue.includes(",")) {
+        args = stringValue.split(",");
+        console.log(
+          `🔍 DEBUG: Object with comma-separated string, split: ${args}`,
+        );
       } else {
         args = [stringValue];
         console.log(`🔍 DEBUG: Object with single value, wrapped: ${args}`);
@@ -458,43 +482,59 @@ const createTransport = async (
       args = [];
       console.log(`🔍 DEBUG: Fallback to empty array`);
     }
-    
+
     // Ensure args is always an array
     if (!Array.isArray(args)) {
       args = [];
       console.log(`🔍 DEBUG: Forced to empty array`);
     }
-    
-    console.log(`🔍 DEBUG: Final args: ${JSON.stringify(args)}, type: ${typeof args}, isArray: ${Array.isArray(args)}`);
+
+    console.log(
+      `🔍 DEBUG: Final args: ${JSON.stringify(args)}, type: ${typeof args}, isArray: ${Array.isArray(args)}`,
+    );
 
     // Resolve the actual executable using findActualExecutable
     const { cmd: actualCommand, args: actualArgs } = findActualExecutable(
       command,
-      args
+      args,
     );
 
-    console.log(`STDIO transport: command=${actualCommand}, args=${actualArgs}`);
-    console.log(`Command type: ${typeof actualCommand}, Args type: ${typeof actualArgs}, Args length: ${Array.isArray(actualArgs) ? actualArgs.length : 'not array'}`);
+    console.log(
+      `STDIO transport: command=${actualCommand}, args=${actualArgs}`,
+    );
+    console.log(
+      `Command type: ${typeof actualCommand}, Args type: ${typeof actualArgs}, Args length: ${Array.isArray(actualArgs) ? actualArgs.length : "not array"}`,
+    );
 
     // Apply stdout filtering for MCP protocol compliance
-    console.log(`🔍 DEBUG: About to create transport with cmd=${actualCommand}, args=${JSON.stringify(actualArgs)}`);
-    console.log(`🔍 DEBUG: cmd type: ${typeof actualCommand}, cmd value: ${actualCommand}`);
-    console.log(`🔍 DEBUG: args type: ${typeof actualArgs}, args isArray: ${Array.isArray(actualArgs)}, args length: ${actualArgs?.length}`);
-    
+    console.log(
+      `🔍 DEBUG: About to create transport with cmd=${actualCommand}, args=${JSON.stringify(actualArgs)}`,
+    );
+    console.log(
+      `🔍 DEBUG: cmd type: ${typeof actualCommand}, cmd value: ${actualCommand}`,
+    );
+    console.log(
+      `🔍 DEBUG: args type: ${typeof actualArgs}, args isArray: ${Array.isArray(actualArgs)}, args length: ${actualArgs?.length}`,
+    );
+
     if (!actualCommand) {
-      throw new Error('Command is undefined or empty');
+      throw new Error("Command is undefined or empty");
     }
     if (!Array.isArray(actualArgs)) {
-      throw new Error(`Args must be an array, got ${typeof actualArgs}: ${JSON.stringify(actualArgs)}`);
+      throw new Error(
+        `Args must be an array, got ${typeof actualArgs}: ${JSON.stringify(actualArgs)}`,
+      );
     }
-    
+
     // Create transport with proper parameters including stderr
-    console.log(`🔍 DEBUG: Creating StdioClientTransport with cmd=${actualCommand}, args=${JSON.stringify(actualArgs)}`);
+    console.log(
+      `🔍 DEBUG: Creating StdioClientTransport with cmd=${actualCommand}, args=${JSON.stringify(actualArgs)}`,
+    );
     const transport = new StdioClientTransport({
       command: actualCommand,
       args: actualArgs,
       env,
-      stderr: "pipe"
+      stderr: "pipe",
     });
     await transport.start();
     return { transport };
@@ -712,79 +752,82 @@ app.get(
       const stderr = (serverTransport as StdioClientTransport).stderr;
       if (stderr && stderr.on) {
         stderr.on("data", (chunk) => {
-        if (chunk.toString().includes("MODULE_NOT_FOUND")) {
-          // Server command not found, remove transports
-          const message = "Command not found, transports removed";
-          webAppTransport.send({
-            jsonrpc: "2.0",
-            method: "notifications/message",
-            params: {
-              level: "emergency",
-              logger: "proxy",
-              data: {
-                message,
-              },
-            },
-          });
-          webAppTransport.close();
-          serverTransport.close();
-          webAppTransports.delete(webAppTransport.sessionId);
-          serverTransports.delete(webAppTransport.sessionId);
-          sessionHeaderHolders.delete(webAppTransport.sessionId);
-          console.error(message);
-        } else {
-          // Inspect message and attempt to assign a RFC 5424 Syslog Protocol level
-          let level;
-          let message = chunk.toString().trim();
-          let ucMsg = chunk.toString().toUpperCase();
-          if (ucMsg.includes("DEBUG")) {
-            level = "debug";
-          } else if (ucMsg.includes("INFO")) {
-            level = "info";
-          } else if (ucMsg.includes("NOTICE")) {
-            level = "notice";
-          } else if (ucMsg.includes("WARN")) {
-            level = "warning";
-          } else if (ucMsg.includes("ERROR")) {
-            level = "error";
-          } else if (ucMsg.includes("CRITICAL")) {
-            level = "critical";
-          } else if (ucMsg.includes("ALERT")) {
-            level = "alert";
-          } else if (ucMsg.includes("EMERGENCY")) {
-            level = "emergency";
-          } else if (ucMsg.includes("SIGINT")) {
-            message = "SIGINT received. Server shutdown.";
-            level = "emergency";
-          } else if (ucMsg.includes("SIGHUP")) {
-            message = "SIGHUP received. Server shutdown.";
-            level = "emergency";
-          } else if (ucMsg.includes("SIGTERM")) {
-            message = "SIGTERM received. Server shutdown.";
-            level = "emergency";
-          } else {
-            level = "info";
-          }
-          // Check if transport is still connected before sending
-          try {
-            if (webAppTransports.has(webAppTransport.sessionId)) {
-              webAppTransport.send({
-                jsonrpc: "2.0",
-                method: "notifications/message",
-                params: {
-                  level,
-                  logger: "stdio",
-                  data: {
-                    message,
-                  },
+          if (chunk.toString().includes("MODULE_NOT_FOUND")) {
+            // Server command not found, remove transports
+            const message = "Command not found, transports removed";
+            webAppTransport.send({
+              jsonrpc: "2.0",
+              method: "notifications/message",
+              params: {
+                level: "emergency",
+                logger: "proxy",
+                data: {
+                  message,
                 },
-              });
+              },
+            });
+            webAppTransport.close();
+            serverTransport.close();
+            webAppTransports.delete(webAppTransport.sessionId);
+            serverTransports.delete(webAppTransport.sessionId);
+            sessionHeaderHolders.delete(webAppTransport.sessionId);
+            console.error(message);
+          } else {
+            // Inspect message and attempt to assign a RFC 5424 Syslog Protocol level
+            let level;
+            let message = chunk.toString().trim();
+            let ucMsg = chunk.toString().toUpperCase();
+            if (ucMsg.includes("DEBUG")) {
+              level = "debug";
+            } else if (ucMsg.includes("INFO")) {
+              level = "info";
+            } else if (ucMsg.includes("NOTICE")) {
+              level = "notice";
+            } else if (ucMsg.includes("WARN")) {
+              level = "warning";
+            } else if (ucMsg.includes("ERROR")) {
+              level = "error";
+            } else if (ucMsg.includes("CRITICAL")) {
+              level = "critical";
+            } else if (ucMsg.includes("ALERT")) {
+              level = "alert";
+            } else if (ucMsg.includes("EMERGENCY")) {
+              level = "emergency";
+            } else if (ucMsg.includes("SIGINT")) {
+              message = "SIGINT received. Server shutdown.";
+              level = "emergency";
+            } else if (ucMsg.includes("SIGHUP")) {
+              message = "SIGHUP received. Server shutdown.";
+              level = "emergency";
+            } else if (ucMsg.includes("SIGTERM")) {
+              message = "SIGTERM received. Server shutdown.";
+              level = "emergency";
+            } else {
+              level = "info";
             }
-          } catch (error) {
-            // Ignore "Not connected" errors to prevent crashes
-            console.log('Transport send failed (connection closed):', error instanceof Error ? error.message : String(error));
+            // Check if transport is still connected before sending
+            try {
+              if (webAppTransports.has(webAppTransport.sessionId)) {
+                webAppTransport.send({
+                  jsonrpc: "2.0",
+                  method: "notifications/message",
+                  params: {
+                    level,
+                    logger: "stdio",
+                    data: {
+                      message,
+                    },
+                  },
+                });
+              }
+            } catch (error) {
+              // Ignore "Not connected" errors to prevent crashes
+              console.log(
+                "Transport send failed (connection closed):",
+                error instanceof Error ? error.message : String(error),
+              );
+            }
           }
-        }
         });
       }
 
@@ -919,17 +962,17 @@ app.get("/config", originValidationMiddleware, authMiddleware, (req, res) => {
 // Database setup using OI_PROJECT_PATH or fallback to relative path
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-const dbPath = process.env.OI_PROJECT_PATH 
-  ? resolve(process.env.OI_PROJECT_PATH, 'brain-trust4.db')
-  : resolve(__dirname, '../../../brain-trust4.db');
+const dbPath = process.env.OI_PROJECT_PATH
+  ? resolve(process.env.OI_PROJECT_PATH, "brain-trust4.db")
+  : resolve(__dirname, "../../../brain-trust4.db");
 
-console.log('🧠 Brain Trust 4 Database Integration Starting...');
+console.log("🧠 Brain Trust 4 Database Integration Starting...");
 console.log(`🗄️ Database path: ${dbPath}`);
 
 // Check if database exists
 if (!existsSync(dbPath)) {
   console.error(`❌ Brain Trust 4 database not found at: ${dbPath}`);
-  console.error('❌ Database integration disabled - using fallback data');
+  console.error("❌ Database integration disabled - using fallback data");
 }
 
 // Initialize database connection
@@ -937,38 +980,51 @@ let bt4db: sqlite3.Database | null = null;
 
 if (existsSync(dbPath)) {
   try {
-    bt4db = new sqlite3.Database(dbPath, sqlite3.OPEN_READWRITE, (err) => {
-      if (err) {
-        console.error('❌ Failed to connect to Brain Trust 4 database:', err.message);
-        bt4db = null;
-      } else {
-        console.log('✅ Connected to Brain Trust 4 database successfully');
-        
-        // Test database with simple query
-        bt4db?.get("SELECT COUNT(*) as count FROM mcp_servers", [], (err, row: any) => {
-          if (err) {
-            console.error('❌ Database query test failed:', err.message);
-            bt4db = null;
-          } else {
-            console.log(`🎯 Database test successful: Found ${row?.count || 0} MCP servers`);
-          }
-        });
-      }
-    });
+    bt4db = new sqlite3.Database(
+      dbPath,
+      sqlite3.OPEN_READWRITE,
+      (err: Error | null) => {
+        if (err) {
+          console.error(
+            "❌ Failed to connect to Brain Trust 4 database:",
+            err.message,
+          );
+          bt4db = null;
+        } else {
+          console.log("✅ Connected to Brain Trust 4 database successfully");
+
+          // Test database with simple query
+          bt4db?.get(
+            "SELECT COUNT(*) as count FROM mcp_servers",
+            [],
+            (err: Error | null, row: any) => {
+              if (err) {
+                console.error("❌ Database query test failed:", err.message);
+                bt4db = null;
+              } else {
+                console.log(
+                  `🎯 Database test successful: Found ${row?.count || 0} MCP servers`,
+                );
+              }
+            },
+          );
+        }
+      },
+    );
   } catch (error) {
-    console.error('❌ Database connection error:', error);
+    console.error("❌ Database connection error:", error);
     bt4db = null;
   }
 }
 
-console.log('🧠 Brain Trust 4 database integration initialized');
+console.log("🧠 Brain Trust 4 database integration initialized");
 
 // API endpoint: Get all servers from BT4 database
-app.get('/api/bt4/servers', originValidationMiddleware, (req, res) => {
-  console.log('🧠 API Request: /api/bt4/servers');
-  
+app.get("/api/bt4/servers", originValidationMiddleware, (req, res) => {
+  console.log("🧠 API Request: /api/bt4/servers");
+
   if (!bt4db) {
-    console.log('❌ No database connection - returning fallback data');
+    console.log("❌ No database connection - returning fallback data");
     res.json([
       {
         name: "mcp-monitor",
@@ -976,8 +1032,8 @@ app.get('/api/bt4/servers', originValidationMiddleware, (req, res) => {
         args: ["-transport", "stdio"],
         description: "System monitoring server (fallback)",
         tools_count: 5,
-        health_status: "healthy"
-      }
+        health_status: "healthy",
+      },
     ]);
     return;
   }
@@ -993,32 +1049,35 @@ app.get('/api/bt4/servers', originValidationMiddleware, (req, res) => {
     FROM mcp_servers 
     ORDER BY name
   `;
-  
-  bt4db.all(query, [], (err, rows: any) => {
+
+  bt4db.all(query, [], (err: Error | null, rows: any) => {
     if (err) {
-      console.error('❌ Database error fetching servers:', err);
-      res.status(500).json({ error: 'Database error' });
+      console.error("❌ Database error fetching servers:", err);
+      res.status(500).json({ error: "Database error" });
       return;
     }
-    
+
     // Parse args from JSON string to array
     const servers = rows.map((row: any) => ({
       ...row,
-      args: row.args ? JSON.parse(row.args) : []
+      args: row.args ? JSON.parse(row.args) : [],
     }));
-    
+
     console.log(`✅ Fetched ${servers.length} servers from database`);
-    console.log('📋 First 3 servers:', servers.slice(0, 3).map((s: any) => s.name));
+    console.log(
+      "📋 First 3 servers:",
+      servers.slice(0, 3).map((s: any) => s.name),
+    );
     res.json(servers);
   });
 });
 
 // API endpoint: Get intent mappings from BT4 database
-app.get('/api/bt4/intents', originValidationMiddleware, (req, res) => {
-  console.log('🧠 API Request: /api/bt4/intents');
-  
+app.get("/api/bt4/intents", originValidationMiddleware, (req, res) => {
+  console.log("🧠 API Request: /api/bt4/intents");
+
   if (!bt4db) {
-    console.log('❌ No database connection - returning empty intents');
+    console.log("❌ No database connection - returning empty intents");
     res.json([]);
     return;
   }
@@ -1028,31 +1087,33 @@ app.get('/api/bt4/intents', originValidationMiddleware, (req, res) => {
     FROM intent_mappings 
     ORDER BY priority DESC, keyword
   `;
-  
-  bt4db.all(query, [], (err, rows) => {
+
+  bt4db.all(query, [], (err: Error | null, rows: any) => {
     if (err) {
-      console.error('❌ Database error fetching intent_mappings:', err);
-      res.status(500).json({ error: 'Database error' });
+      console.error("❌ Database error fetching intent_mappings:", err);
+      res.status(500).json({ error: "Database error" });
       return;
     }
-    
-    console.log(`✅ Fetched ${rows?.length || 0} intent mappings from database`);
-    console.log('📋 First 3 mappings:', rows?.slice(0, 3));
+
+    console.log(
+      `✅ Fetched ${rows?.length || 0} intent mappings from database`,
+    );
+    console.log("📋 First 3 mappings:", rows?.slice(0, 3));
     res.json(rows);
   });
 });
 
 // API endpoint: Get analytics from BT4 database
-app.get('/api/bt4/analytics', originValidationMiddleware, (req, res) => {
-  console.log('🧠 API Request: /api/bt4/analytics');
-  
+app.get("/api/bt4/analytics", originValidationMiddleware, (req, res) => {
+  console.log("🧠 API Request: /api/bt4/analytics");
+
   if (!bt4db) {
-    console.log('❌ No database connection - returning fallback analytics');
+    console.log("❌ No database connection - returning fallback analytics");
     res.json({
       servers_count: 0,
       tools_count: 0,
       intents_count: 0,
-      status: 'Brain Trust 4 Database Connection Failed'
+      status: "Brain Trust 4 Database Connection Failed",
     });
     return;
   }
@@ -1060,26 +1121,26 @@ app.get('/api/bt4/analytics', originValidationMiddleware, (req, res) => {
   // Get analytics data from multiple tables
   const queries = {
     servers: "SELECT COUNT(*) as count FROM mcp_servers",
-    tools: "SELECT COUNT(*) as count FROM tools", 
-    intents: "SELECT COUNT(*) as count FROM intent_mappings"
+    tools: "SELECT COUNT(*) as count FROM tools",
+    intents: "SELECT COUNT(*) as count FROM intent_mappings",
   };
-  
+
   let completed = 0;
   const results: any = {};
-  
+
   Object.entries(queries).forEach(([key, query]) => {
-    bt4db!.get(query, [], (err, row: any) => {
+    bt4db!.get(query, [], (err: Error | null, row: any) => {
       if (err) {
         console.error(`❌ Analytics query error for ${key}:`, err);
         results[`${key}_count`] = 0;
       } else {
         results[`${key}_count`] = row?.count || 0;
       }
-      
+
       completed++;
       if (completed === Object.keys(queries).length) {
-        results.status = 'Brain Trust 4 Database Integration Active';
-        console.log('✅ Analytics data:', results);
+        results.status = "Brain Trust 4 Database Integration Active";
+        console.log("✅ Analytics data:", results);
         res.json(results);
       }
     });

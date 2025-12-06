@@ -450,12 +450,16 @@ export function useConnection({
 
       const isEmptyAuthHeader = (header: CustomHeaders[number]) =>
         header.name.trim().toLowerCase() === "authorization" &&
-        header.value.trim().toLowerCase() === "bearer";
+        (header.value.trim().toLowerCase() === "bearer" ||
+          header.value.trim() === "");
 
       // Check for empty Authorization headers and show validation error
-      const hasEmptyAuthHeader = finalHeaders.some(
-        (header) => header.enabled && isEmptyAuthHeader(header),
-      );
+      // Only validate for non-STDIO transports (SSE/HTTP need auth, STDIO doesn't)
+      const hasEmptyAuthHeader =
+        transportType !== "stdio" &&
+        finalHeaders.some(
+          (header) => header.enabled && isEmptyAuthHeader(header),
+        );
 
       if (hasEmptyAuthHeader) {
         toast({
@@ -464,6 +468,15 @@ export function useConnection({
             "Authorization header is enabled but empty. Please add a token or disable the header.",
           variant: "destructive",
         });
+        setConnectionStatus("error");
+        return;
+      }
+
+      // For STDIO connections, filter out empty Authorization headers automatically
+      if (transportType === "stdio") {
+        finalHeaders = finalHeaders.filter(
+          (header) => !(header.enabled && isEmptyAuthHeader(header)),
+        );
       }
 
       const needsOAuthToken = !finalHeaders.some(
@@ -596,7 +609,11 @@ export function useConnection({
           case "stdio": {
             mcpProxyServerUrl = new URL(`${getMCPProxyAddress(config)}/stdio`);
             mcpProxyServerUrl.searchParams.append("command", command);
-            mcpProxyServerUrl.searchParams.append("args", args);
+            // If args is already a JSON string, use it; otherwise stringify it
+            const argsParam = args.trim().startsWith("[")
+              ? args
+              : JSON.stringify(args.split(/\s+/).filter((a) => a));
+            mcpProxyServerUrl.searchParams.append("args", argsParam);
             mcpProxyServerUrl.searchParams.append("env", JSON.stringify(env));
 
             const proxyFullAddress = config.MCP_PROXY_FULL_ADDRESS

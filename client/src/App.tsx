@@ -57,6 +57,8 @@ import {
   Key,
   MessageSquare,
   Settings,
+  BarChart,
+  Brain,
 } from "lucide-react";
 
 import { z } from "zod";
@@ -91,6 +93,8 @@ import {
   migrateFromLegacyAuth,
 } from "./lib/types/customHeaders";
 import MetadataTab from "./components/MetadataTab";
+import AnalyticsTab from "./components/AnalyticsTab";
+import IntentManagerTab from "./components/IntentManagerTab";
 
 const CONFIG_LOCAL_STORAGE_KEY = "inspectorConfig_v1";
 
@@ -984,6 +988,16 @@ const App = () => {
           connectionType={connectionType}
           setConnectionType={setConnectionType}
           serverImplementation={serverImplementation}
+          onServerSelect={(
+            server: { name: string; command: string; args: string[] } | null,
+          ) => {
+            if (server) {
+              setCommand(server.command);
+              // Pass args as JSON string so server can parse it as array
+              setArgs(JSON.stringify(server.args));
+              setTransportType("stdio");
+            }
+          }}
         />
         <div
           onMouseDown={handleSidebarDragStart}
@@ -1013,6 +1027,14 @@ const App = () => {
               }}
             >
               <TabsList className="mb-4 py-0">
+                <TabsTrigger value="intents">
+                  <Brain className="w-4 h-4 mr-2" />
+                  Intents
+                </TabsTrigger>
+                <TabsTrigger value="analytics">
+                  <BarChart className="w-4 h-4 mr-2" />
+                  Analytics
+                </TabsTrigger>
                 <TabsTrigger
                   value="resources"
                   disabled={!serverCapabilities?.resources}
@@ -1232,6 +1254,12 @@ const App = () => {
                       metadata={metadata}
                       onMetadataChange={handleMetadataChange}
                     />
+                    <TabsContent value="analytics">
+                      <AnalyticsTab />
+                    </TabsContent>
+                    <TabsContent value="intents">
+                      <IntentManagerTab config={config} />
+                    </TabsContent>
                   </>
                 )}
               </div>

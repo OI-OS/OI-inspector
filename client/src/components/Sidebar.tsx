@@ -42,6 +42,7 @@ import CustomHeaders from "./CustomHeaders";
 import { CustomHeaders as CustomHeadersType } from "@/lib/types/customHeaders";
 import { useToast } from "../lib/hooks/useToast";
 import IconDisplay, { WithIcons } from "./IconDisplay";
+import ServerSelector from "./ServerSelector";
 
 interface SidebarProps {
   connectionStatus: ConnectionStatus;
@@ -76,6 +77,9 @@ interface SidebarProps {
   serverImplementation?:
     | (WithIcons & { name?: string; version?: string; websiteUrl?: string })
     | null;
+  onServerSelect?: (
+    server: { name: string; command: string; args: string[] } | null,
+  ) => void;
 }
 
 const Sidebar = ({
@@ -108,6 +112,7 @@ const Sidebar = ({
   connectionType,
   setConnectionType,
   serverImplementation,
+  onServerSelect,
 }: SidebarProps) => {
   const [theme, setTheme] = useTheme();
   const [showEnvVars, setShowEnvVars] = useState(false);
@@ -239,13 +244,16 @@ const Sidebar = ({
       <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-border">
         <div className="flex items-center">
           <h1 className="ml-2 text-lg font-semibold">
-            MCP Inspector v{version}
+            🧠 OI Inspector v{version}
           </h1>
         </div>
       </div>
 
       <div className="p-4 flex-1 overflow-auto">
         <div className="space-y-4">
+          {onServerSelect && (
+            <ServerSelector onServerSelect={onServerSelect} config={config} />
+          )}
           <div className="space-y-2">
             <label
               className="text-sm font-medium"
